@@ -137,13 +137,26 @@ function getWarns(chatId, userId) {
 // ══════════════════════════════════════════════════════════
 const bot = new Telegraf(BOT_TOKEN);
 
+// Логирование всех входящих команд
+bot.use((ctx, next) => {
+  if (ctx.message?.text?.startsWith("/")) {
+    console.log(`📨 Команда от ${ctx.from.id} в чате ${ctx.chat.id} (${ctx.chat.type}): ${ctx.message.text}`);
+  }
+  return next();
+});
+
 // Игнор личных сообщений для большинства команд
 function groupOnly(fn) {
   return async (ctx) => {
     if (ctx.chat.type === "private") {
       return ctx.reply("❌ Команда работает только в группах.");
     }
-    return fn(ctx);
+    try {
+      return await fn(ctx);
+    } catch (error) {
+      console.error("❌ Ошибка в команде:", error.message);
+      await ctx.reply(`⚠️ Ошибка: ${error.message}`).catch(console.error);
+    }
   };
 }
 
@@ -551,7 +564,23 @@ bot.command("admins", groupOnly(async (ctx) => {
 // ══════════════════════════════════════════════════════════
 //  ЗАПУСК
 // ══════════════════════════════════════════════════════════
-bot.launch().then(() => console.log("✅ Бот запущен!"));
+bot.launch().then(() => {
+  console.log("✅ Бот запущен!");
+  console.log("🔑 Токен валиден");
+}).catch(err => {
+  console.error("❌ Ошибка запуска:", err.message);
+  process.exit(1);
+});
 
-process.once("SIGINT",  () => bot.stop("SIGINT"));
-process.once("SIGTERM", () => bot.stop("SIGTERM"));
+bot.catch((err, ctx) => {
+  console.error("❌ Ошибка в обработчике:", err.message);
+});
+
+process.once("SIGINT",  () => {
+  console.log("🛑 Бот остановлен");
+  bot.stop("SIGINT");
+});
+process.once("SIGTERM", () => {
+  console.log("🛑 Бот остановлен");
+  bot.stop("SIGTERM");
+});
