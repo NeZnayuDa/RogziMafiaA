@@ -314,22 +314,29 @@ bot.command("warn", async (ctx) => {
 bot.command("warns", async (ctx) => {
   try {
     if (!groupCheck(ctx)) return;
-  const target = ctx.message.reply_to_message?.from;
-  if (!target) {
-    console.log("❌ Нет ответа на сообщение");
-    return ctx.reply("❌ Ответьте на сообщение пользователя.");
+    
+    const target = ctx.message.reply_to_message?.from ?? ctx.from;
+    const warns = getWarns(ctx.chat.id, target.id);
+    
+    if (!target) {
+      console.log("❌ Нет ответа на сообщение");
+      return ctx.reply("❌ Ответьте на сообщение пользователя.");
+    }
+    console.log(`✅ Показываем варны ${target.id}`);
+
+    if (!warns.length)
+      return ctx.replyWithHTML(`✅ У ${mention(target)} нет варнов.`);
+
+    let text = `📋 Варны ${mention(target)} (<b>${warns.length}/${MAX_WARNS}</b>):\n\n`;
+    warns.forEach((w, i) => {
+      const date = w.date.slice(0, 10);
+      text += `${i + 1}. ${escapeHtml(w.reason)} — <i>${date}</i>\n`;
+    });
+    await ctx.replyWithHTML(text);
+  } catch (error) {
+    console.error("❌ Ошибка в /warns:", error.message);
+    await ctx.reply(`⚠️ Ошибка: ${error.message}`).catch(console.error);
   }
-  console.log(`✅ Показываем варны ${target.id}`);
-
-  if (!warns.length)
-    return ctx.replyWithHTML(`✅ У ${mention(target)} нет варнов.`);
-
-  let text = `📋 Варны ${mention(target)} (<b>${warns.length}/${MAX_WARNS}</b>):\n\n`;
-  warns.forEach((w, i) => {
-    const date = w.date.slice(0, 10);
-    text += `${i + 1}. ${escapeHtml(w.reason)} — <i>${date}</i>\n`;
-  });
-  await ctx.replyWithHTML(text);
 });
 
 // ══════════════════════════════════════════════════════════
@@ -426,37 +433,38 @@ bot.command("unmute", async (ctx) => {
 // ══════════════════════════════════════════════════════════
 //  /kick
 // ══════════════════════════════════════════════════════════
+bot.command("kick", async (ctx) => {
   try {
     console.log("👢 /kick вызвана");
-  if (!groupCheck(ctx)) {
-    console.log("❌ Не группа");
-    return;
-  }
-  
-  if (!await hasPermission(ctx, ctx.from.id, "can_kick")) {
-    console.log("❌ Нет прав на kick");
-    return ctx.reply("❌ Недостаточно прав (нужен уровень 2+).");
-  }
+    if (!groupCheck(ctx)) {
+      console.log("❌ Не группа");
+      return;
+    }
+    
+    if (!await hasPermission(ctx, ctx.from.id, "can_kick")) {
+      console.log("❌ Нет прав на kick");
+      return ctx.reply("❌ Недостаточно прав (нужен уровень 2+).");
+    }
 
-  const target = ctx.message.reply_to_message?.from;
-  if (!target) {
-    console.log("❌ Нет ответа на сообщение");
-    return ctx.reply("❌ Ответьте на сообщение пользователя.");
-  }
-  console.log(`✅ Кик пользователю ${target.id}`);
-  if (target.is_bot) return ctx.reply("❌ Нельзя кикнуть бота.");
+    const target = ctx.message.reply_to_message?.from;
+    if (!target) {
+      console.log("❌ Нет ответа на сообщение");
+      return ctx.reply("❌ Ответьте на сообщение пользователя.");
+    }
+    console.log(`✅ Кик пользователю ${target.id}`);
+    if (target.is_bot) return ctx.reply("❌ Нельзя кикнуть бота.");
 
-  const args = ctx.message.text.split(/\s+/).slice(1);
-  const reason = args.join(" ") || "нарушение правил";
+    const args = ctx.message.text.split(/\s+/).slice(1);
+    const reason = args.join(" ") || "нарушение правил";
 
-  try {
     await ctx.telegram.banChatMember(ctx.chat.id, target.id);
     await ctx.telegram.unbanChatMember(ctx.chat.id, target.id); // кик = бан + разбан
     await ctx.replyWithHTML(
       `👢 ${mention(target)} кикнут из группы.\nПричина: ${escapeHtml(reason)}`
     );
   } catch (e) {
-    await ctx.reply(`❌ Ошибка: ${e.message}`);
+    console.error("❌ Ошибка в /kick:", e.message);
+    await ctx.reply(`❌ Ошибка: ${e.message}`).catch(console.error);
   }
 });
 
@@ -509,50 +517,56 @@ bot.command("unban", async (ctx) => {
 // ══════════════════════════════════════════════════════════
 //  /promote
 // ══════════════════════════════════════════════════════════
+bot.command("promote", async (ctx) => {
   try {
     console.log("📈 /promote вызвана");
     if (!groupCheck(ctx)) {
       console.log("❌ Не группа");
       return;
     }
-  const executorId = ctx.from.id;
-  const chatId = ctx.chat.id;
-  const executorLevel = getUserLevel(chatId, executorId);
-  const isTgOwner = await isTgCreator(ctx, executorId);
+    
+    const executorId = ctx.from.id;
+    const chatId = ctx.chat.id;
+    const executorLevel = getUserLevel(chatId, executorId);
+    const isTgOwner = await isTgCreator(ctx, executorId);
 
-  if (!await hasPermission(ctx, executorId, "can_promote"))
-    return ctx.reply("❌ Недостаточно прав для повышения (нужен уровень 3+).");
+    if (!await hasPermission(ctx, executorId, "can_promote"))
+      return ctx.reply("❌ Недостаточно прав для повышения (нужен уровень 3+).");
 
-  const target = ctx.message.reply_to_message?.from;
-  if (!target) return ctx.reply("❌ Ответьте на сообщение пользователя.\nПример: /promote 2");
-  if (target.is_bot) return ctx.reply("❌ Нельзя назначить уровень боту.");
-  if (target.id === executorId) return ctx.reply("❌ Нельзя повышать себя.");
+    const target = ctx.message.reply_to_message?.from;
+    if (!target) return ctx.reply("❌ Ответьте на сообщение пользователя.\nПример: /promote 2");
+    if (target.is_bot) return ctx.reply("❌ Нельзя назначить уровень боту.");
+    if (target.id === executorId) return ctx.reply("❌ Нельзя повышать себя.");
 
-  const args = ctx.message.text.split(/\s+/).slice(1);
-  if (!args.length || isNaN(args[0]))
-    return ctx.reply("❌ Укажите уровень: /promote 1-5");
+    const args = ctx.message.text.split(/\s+/).slice(1);
+    if (!args.length || isNaN(args[0]))
+      return ctx.reply("❌ Укажите уровень: /promote 1-5");
 
-  const newLevel = parseInt(args[0]);
-  if (!LEVELS[newLevel] || newLevel < 1)
-    return ctx.reply("❌ Уровень от 1 до 5.");
+    const newLevel = parseInt(args[0]);
+    if (!LEVELS[newLevel] || newLevel < 1)
+      return ctx.reply("❌ Уровень от 1 до 5.");
 
-  const maxAllowed = isTgOwner ? 5 : LEVELS[executorLevel]?.max_promote ?? 0;
-  if (newLevel > maxAllowed)
-    return ctx.reply(`❌ Вы можете повышать максимум до уровня ${maxAllowed}.`);
+    const maxAllowed = isTgOwner ? 5 : LEVELS[executorLevel]?.max_promote ?? 0;
+    if (newLevel > maxAllowed)
+      return ctx.reply(`❌ Вы можете повышать максимум до уровня ${maxAllowed}.`);
 
-  setUserLevel(chatId, target.id, newLevel);
-  const info = LEVELS[newLevel];
+    setUserLevel(chatId, target.id, newLevel);
+    const info = LEVELS[newLevel];
 
-  await ctx.replyWithHTML(
-    `✅ ${mention(target)} назначен на должность <b>${info.name}</b>!\n\n` +
-    `Права:\n` +
-    `${info.can_warn    ? "✅" : "❌"} Варны\n` +
-    `${info.can_mute    ? "✅" : "❌"} Муты/размуты\n` +
-    `${info.can_kick    ? "✅" : "❌"} Кик\n` +
-    `${info.can_ban     ? "✅" : "❌"} Бан/разбан\n` +
-    `${info.can_promote ? "✅" : "❌"} Повышение (до ур.${info.max_promote})\n` +
-    `${info.can_demote  ? "✅" : "❌"} Понижение`
-  );
+    await ctx.replyWithHTML(
+      `✅ ${mention(target)} назначен на должность <b>${info.name}</b>!\n\n` +
+      `Права:\n` +
+      `${info.can_warn    ? "✅" : "❌"} Варны\n` +
+      `${info.can_mute    ? "✅" : "❌"} Муты/размуты\n` +
+      `${info.can_kick    ? "✅" : "❌"} Кик\n` +
+      `${info.can_ban     ? "✅" : "❌"} Бан/разбан\n` +
+      `${info.can_promote ? "✅" : "❌"} Повышение (до ур.${info.max_promote})\n` +
+      `${info.can_demote  ? "✅" : "❌"} Понижение`
+    );
+  } catch (error) {
+    console.error("❌ Ошибка в /promote:", error.message);
+    await ctx.reply(`⚠️ Ошибка: ${error.message}`).catch(console.error);
+  }
 });
 
 // ══════════════════════════════════════════════════════════
