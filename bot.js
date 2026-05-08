@@ -210,7 +210,8 @@ bot.command("levels", async (ctx) => {
 // ══════════════════════════════════════════════════════════
 //  АВТО-ФИЛЬТР МАТОВ
 // ══════════════════════════════════════════════════════════
-bot.on("text", groupOnly(async (ctx) => {
+bot.on("text", async (ctx) => {
+  if (ctx.chat.type === "private") return;
   // Пропускаем команды
   if (ctx.message.text?.startsWith("/")) return;
 
@@ -249,7 +250,7 @@ bot.on("text", groupOnly(async (ctx) => {
       `⚠️ Варн <b>${warnCount}/${MAX_WARNS}</b> — до мута осталось <b>${left}</b>`
     );
   }
-}));
+});
 
 // ══════════════════════════════════════════════════════════
 //  /warn
