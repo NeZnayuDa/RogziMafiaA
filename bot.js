@@ -141,6 +141,7 @@ const bot = new Telegraf(BOT_TOKEN);
 bot.use((ctx, next) => {
   if (ctx.message?.text?.startsWith("/")) {
     console.log(`📨 Команда от ${ctx.from.id} в чате ${ctx.chat.id} (${ctx.chat.type}): ${ctx.message.text}`);
+    console.log(`   chat.type = ${ctx.chat.type}, reply_to = ${ctx.message.reply_to_message?.from?.id ?? "нет"}`);
   }
   return next();
 });
