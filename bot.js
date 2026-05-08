@@ -146,18 +146,12 @@ bot.use((ctx, next) => {
 });
 
 // Игнор личных сообщений для большинства команд
-function groupOnly(fn) {
-  return async (ctx) => {
-    if (ctx.chat.type === "private") {
-      return ctx.reply("❌ Команда работает только в группах.");
-    }
-    try {
-      return await fn(ctx);
-    } catch (error) {
-      console.error("❌ Ошибка в команде:", error.message);
-      await ctx.reply(`⚠️ Ошибка: ${error.message}`).catch(console.error);
-    }
-  };
+function groupCheck(ctx) {
+  if (ctx.chat.type === "private") {
+    ctx.reply("❌ Команда работает только в группах.");
+    return false;
+  }
+  return true;
 }
 
 // ── /start ────────────────────────────────────────────────
@@ -260,7 +254,8 @@ bot.on("text", groupOnly(async (ctx) => {
 // ══════════════════════════════════════════════════════════
 //  /warn
 // ══════════════════════════════════════════════════════════
-bot.command("warn", groupOnly(async (ctx) => {
+bot.command("warn", async (ctx) => {
+  if (!groupCheck(ctx)) return;
   if (!await hasPermission(ctx, ctx.from.id, "can_warn"))
     return ctx.reply("❌ Недостаточно прав (нужен уровень 1+).");
 
@@ -297,12 +292,13 @@ bot.command("warn", groupOnly(async (ctx) => {
       `Варны: <b>${warnCount}/${MAX_WARNS}</b> (до мута: ${left})`
     );
   }
-}));
+});
 
 // ══════════════════════════════════════════════════════════
 //  /warns
 // ══════════════════════════════════════════════════════════
-bot.command("warns", groupOnly(async (ctx) => {
+bot.command("warns", async (ctx) => {
+  if (!groupCheck(ctx)) return;
   const target = ctx.message.reply_to_message?.from ?? ctx.from;
   const warns = getWarns(ctx.chat.id, target.id);
 
@@ -315,12 +311,13 @@ bot.command("warns", groupOnly(async (ctx) => {
     text += `${i + 1}. ${escapeHtml(w.reason)} — <i>${date}</i>\n`;
   });
   await ctx.replyWithHTML(text);
-}));
+});
 
 // ══════════════════════════════════════════════════════════
 //  /clearwarns
 // ══════════════════════════════════════════════════════════
-bot.command("clearwarns", groupOnly(async (ctx) => {
+bot.command("clearwarns", async (ctx) => {
+  if (!groupCheck(ctx)) return;
   if (!await hasPermission(ctx, ctx.from.id, "can_warn"))
     return ctx.reply("❌ Недостаточно прав.");
 
@@ -329,12 +326,13 @@ bot.command("clearwarns", groupOnly(async (ctx) => {
 
   clearWarns(ctx.chat.id, target.id);
   await ctx.replyWithHTML(`✅ Варны ${mention(target)} сброшены.`);
-}));
+});
 
 // ══════════════════════════════════════════════════════════
 //  /mute
 // ══════════════════════════════════════════════════════════
-bot.command("mute", groupOnly(async (ctx) => {
+bot.command("mute", async (ctx) => {
+  if (!groupCheck(ctx)) return;
   if (!await hasPermission(ctx, ctx.from.id, "can_mute"))
     return ctx.reply("❌ Недостаточно прав (нужен уровень 1+).");
 
@@ -366,12 +364,13 @@ bot.command("mute", groupOnly(async (ctx) => {
   } catch (e) {
     await ctx.reply(`❌ Ошибка: ${e.message}`);
   }
-}));
+});
 
 // ══════════════════════════════════════════════════════════
 //  /unmute
 // ══════════════════════════════════════════════════════════
-bot.command("unmute", groupOnly(async (ctx) => {
+bot.command("unmute", async (ctx) => {
+  if (!groupCheck(ctx)) return;
   if (!await hasPermission(ctx, ctx.from.id, "can_unmute"))
     return ctx.reply("❌ Недостаточно прав.");
 
@@ -392,12 +391,13 @@ bot.command("unmute", groupOnly(async (ctx) => {
   } catch (e) {
     await ctx.reply(`❌ Ошибка: ${e.message}`);
   }
-}));
+});
 
 // ══════════════════════════════════════════════════════════
 //  /kick
 // ══════════════════════════════════════════════════════════
-bot.command("kick", groupOnly(async (ctx) => {
+bot.command("kick", async (ctx) => {
+  if (!groupCheck(ctx)) return;
   if (!await hasPermission(ctx, ctx.from.id, "can_kick"))
     return ctx.reply("❌ Недостаточно прав (нужен уровень 2+).");
 
@@ -417,12 +417,13 @@ bot.command("kick", groupOnly(async (ctx) => {
   } catch (e) {
     await ctx.reply(`❌ Ошибка: ${e.message}`);
   }
-}));
+});
 
 // ══════════════════════════════════════════════════════════
 //  /ban
 // ══════════════════════════════════════════════════════════
-bot.command("ban", groupOnly(async (ctx) => {
+bot.command("ban", async (ctx) => {
+  if (!groupCheck(ctx)) return;
   if (!await hasPermission(ctx, ctx.from.id, "can_ban"))
     return ctx.reply("❌ Недостаточно прав (нужен уровень 4+).");
 
@@ -443,12 +444,13 @@ bot.command("ban", groupOnly(async (ctx) => {
   } catch (e) {
     await ctx.reply(`❌ Ошибка: ${e.message}`);
   }
-}));
+});
 
 // ══════════════════════════════════════════════════════════
 //  /unban
 // ══════════════════════════════════════════════════════════
-bot.command("unban", groupOnly(async (ctx) => {
+bot.command("unban", async (ctx) => {
+  if (!groupCheck(ctx)) return;
   if (!await hasPermission(ctx, ctx.from.id, "can_unban"))
     return ctx.reply("❌ Недостаточно прав (нужен уровень 4+).");
 
@@ -461,12 +463,13 @@ bot.command("unban", groupOnly(async (ctx) => {
   } catch (e) {
     await ctx.reply(`❌ Ошибка: ${e.message}`);
   }
-}));
+});
 
 // ══════════════════════════════════════════════════════════
 //  /promote
 // ══════════════════════════════════════════════════════════
-bot.command("promote", groupOnly(async (ctx) => {
+bot.command("promote", async (ctx) => {
+  if (!groupCheck(ctx)) return;
   const executorId = ctx.from.id;
   const chatId = ctx.chat.id;
   const executorLevel = getUserLevel(chatId, executorId);
@@ -505,12 +508,13 @@ bot.command("promote", groupOnly(async (ctx) => {
     `${info.can_promote ? "✅" : "❌"} Повышение (до ур.${info.max_promote})\n` +
     `${info.can_demote  ? "✅" : "❌"} Понижение`
   );
-}));
+});
 
 // ══════════════════════════════════════════════════════════
 //  /demote
 // ══════════════════════════════════════════════════════════
-bot.command("demote", groupOnly(async (ctx) => {
+bot.command("demote", async (ctx) => {
+  if (!groupCheck(ctx)) return;
   const executorId = ctx.from.id;
   const chatId = ctx.chat.id;
   const executorLevel = getUserLevel(chatId, executorId);
@@ -536,12 +540,13 @@ bot.command("demote", groupOnly(async (ctx) => {
   await ctx.replyWithHTML(
     `🔻 ${mention(target)} снят с должности <b>${oldInfo.name}</b>.`
   );
-}));
+});
 
 // ══════════════════════════════════════════════════════════
 //  /admins
 // ══════════════════════════════════════════════════════════
-bot.command("admins", groupOnly(async (ctx) => {
+bot.command("admins", async (ctx) => {
+  if (!groupCheck(ctx)) return;
   const chatId = ctx.chat.id;
   const data = loadData();
 
@@ -559,7 +564,7 @@ bot.command("admins", groupOnly(async (ctx) => {
     text += `${info.emoji} <a href="tg://user?id=${userId}">${userId}</a> — ${info.name}\n`;
   }
   await ctx.replyWithHTML(text);
-}));
+});
 
 // ══════════════════════════════════════════════════════════
 //  ЗАПУСК
