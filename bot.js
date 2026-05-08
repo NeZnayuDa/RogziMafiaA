@@ -256,12 +256,25 @@ bot.on("text", async (ctx) => {
 //  /warn
 // ══════════════════════════════════════════════════════════
 bot.command("warn", async (ctx) => {
-  if (!groupCheck(ctx)) return;
-  if (!await hasPermission(ctx, ctx.from.id, "can_warn"))
+  console.log("⚠️ /warn вызвана");
+  if (!groupCheck(ctx)) {
+    console.log("❌ Не группа");
+    return;
+  }
+  
+  if (!await hasPermission(ctx, ctx.from.id, "can_warn")) {
+    console.log("❌ Нет прав на warn");
     return ctx.reply("❌ Недостаточно прав (нужен уровень 1+).");
+  }
 
   const target = ctx.message.reply_to_message?.from;
-  if (!target) return ctx.reply("❌ Ответьте на сообщение пользователя.");
+  if (!target) {
+    console.log("❌ Нет ответа на сообщение");
+    return ctx.reply("❌ Ответьте на сообщение пользователя.");
+  }
+  
+  console.log(`✅ Варнинг пользователю ${target.id}`);
+  
   if (target.id === ctx.from.id) return ctx.reply("❌ Нельзя варнить себя.");
   if (target.is_bot) return ctx.reply("❌ Нельзя варнить ботов.");
 
@@ -299,9 +312,14 @@ bot.command("warn", async (ctx) => {
 //  /warns
 // ══════════════════════════════════════════════════════════
 bot.command("warns", async (ctx) => {
-  if (!groupCheck(ctx)) return;
-  const target = ctx.message.reply_to_message?.from ?? ctx.from;
-  const warns = getWarns(ctx.chat.id, target.id);
+  try {
+    if (!groupCheck(ctx)) return;
+  const target = ctx.message.reply_to_message?.from;
+  if (!target) {
+    console.log("❌ Нет ответа на сообщение");
+    return ctx.reply("❌ Ответьте на сообщение пользователя.");
+  }
+  console.log(`✅ Показываем варны ${target.id}`);
 
   if (!warns.length)
     return ctx.replyWithHTML(`✅ У ${mention(target)} нет варнов.`);
@@ -333,12 +351,23 @@ bot.command("clearwarns", async (ctx) => {
 //  /mute
 // ══════════════════════════════════════════════════════════
 bot.command("mute", async (ctx) => {
-  if (!groupCheck(ctx)) return;
-  if (!await hasPermission(ctx, ctx.from.id, "can_mute"))
+  console.log("🔇 /mute вызвана");
+  if (!groupCheck(ctx)) {
+    console.log("❌ Не группа");
+    return;
+  }
+  
+  if (!await hasPermission(ctx, ctx.from.id, "can_mute")) {
+    console.log("❌ Нет прав на mute");
     return ctx.reply("❌ Недостаточно прав (нужен уровень 1+).");
+  }
 
   const target = ctx.message.reply_to_message?.from;
-  if (!target) return ctx.reply("❌ Ответьте на сообщение.\nПример: /mute 60 спам");
+  if (!target) {
+    console.log("❌ Нет ответа на сообщение");
+    return ctx.reply("❌ Ответьте на сообщение.\nПример: /mute 60 спам");
+  }
+  console.log(`✅ Мутирование пользователя ${target.id}`);
   if (target.is_bot) return ctx.reply("❌ Нельзя мутить ботов.");
 
   const args = ctx.message.text.split(/\s+/).slice(1);
@@ -397,13 +426,24 @@ bot.command("unmute", async (ctx) => {
 // ══════════════════════════════════════════════════════════
 //  /kick
 // ══════════════════════════════════════════════════════════
-bot.command("kick", async (ctx) => {
-  if (!groupCheck(ctx)) return;
-  if (!await hasPermission(ctx, ctx.from.id, "can_kick"))
+  try {
+    console.log("👢 /kick вызвана");
+  if (!groupCheck(ctx)) {
+    console.log("❌ Не группа");
+    return;
+  }
+  
+  if (!await hasPermission(ctx, ctx.from.id, "can_kick")) {
+    console.log("❌ Нет прав на kick");
     return ctx.reply("❌ Недостаточно прав (нужен уровень 2+).");
+  }
 
   const target = ctx.message.reply_to_message?.from;
-  if (!target) return ctx.reply("❌ Ответьте на сообщение пользователя.");
+  if (!target) {
+    console.log("❌ Нет ответа на сообщение");
+    return ctx.reply("❌ Ответьте на сообщение пользователя.");
+  }
+  console.log(`✅ Кик пользователю ${target.id}`);
   if (target.is_bot) return ctx.reply("❌ Нельзя кикнуть бота.");
 
   const args = ctx.message.text.split(/\s+/).slice(1);
@@ -469,8 +509,12 @@ bot.command("unban", async (ctx) => {
 // ══════════════════════════════════════════════════════════
 //  /promote
 // ══════════════════════════════════════════════════════════
-bot.command("promote", async (ctx) => {
-  if (!groupCheck(ctx)) return;
+  try {
+    console.log("📈 /promote вызвана");
+    if (!groupCheck(ctx)) {
+      console.log("❌ Не группа");
+      return;
+    }
   const executorId = ctx.from.id;
   const chatId = ctx.chat.id;
   const executorLevel = getUserLevel(chatId, executorId);
@@ -547,24 +591,47 @@ bot.command("demote", async (ctx) => {
 //  /admins
 // ══════════════════════════════════════════════════════════
 bot.command("admins", async (ctx) => {
-  if (!groupCheck(ctx)) return;
-  const chatId = ctx.chat.id;
-  const data = loadData();
+  try {
+    console.log("📋 /admins вызвана");
+    
+    if (!groupCheck(ctx)) {
+      console.log("❌ Не группа");
+      return;
+    }
+    
+    const chatId = ctx.chat.id;
+    console.log(`📂 Загружаем данные для чата ${chatId}`);
+    
+    const data = loadData();
 
-  const entries = Object.entries(data.admins)
-    .filter(([k, v]) => k.startsWith(`${chatId}:`) && v > 0)
-    .sort(([, a], [, b]) => b - a);
+    const entries = Object.entries(data.admins)
+      .filter(([k, v]) => k.startsWith(`${chatId}:`) && v > 0)
+      .sort(([, a], [, b]) => b - a);
 
-  if (!entries.length)
-    return ctx.reply("📋 Назначенных ботом администраторов нет.");
+    console.log(`👥 Найдено админов: ${entries.length}`);
 
-  let text = `📋 <b>Команда (бот-уровни):</b>\n\n`;
-  for (const [k, level] of entries) {
-    const userId = k.split(":")[1];
-    const info = LEVELS[level];
-    text += `${info.emoji} <a href="tg://user?id=${userId}">${userId}</a> — ${info.name}\n`;
+    if (!entries.length) {
+      console.log("✅ Нет админов, отправляем сообщение");
+      return ctx.reply("📋 Назначенных ботом администраторов нет.");
+    }
+
+    let text = `📋 <b>Команда (бот-уровни):</b>\n\n`;
+    for (const [k, level] of entries) {
+      const userId = k.split(":")[1];
+      const info = LEVELS[level];
+      if (!info) {
+        console.warn(`⚠️ Неверный уровень ${level} для ${userId}`);
+        continue;
+      }
+      text += `${info.emoji} <a href="tg://user?id=${userId}">${userId}</a> — ${info.name}\n`;
+    }
+    
+    console.log("✅ Отправляем список админов");
+    await ctx.replyWithHTML(text);
+  } catch (error) {
+    console.error("❌ Ошибка в /admins:", error.message);
+    await ctx.reply(`⚠️ Ошибка: ${error.message}`).catch(console.error);
   }
-  await ctx.replyWithHTML(text);
 });
 
 // ══════════════════════════════════════════════════════════
